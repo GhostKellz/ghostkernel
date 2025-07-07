@@ -2,25 +2,26 @@ const std = @import("std");
 const linux_ghost = @import("linux_ghost");
 
 pub fn main() !void {
-    // Prints to stderr, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-    try linux_ghost.bufferedPrint();
-}
-
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
-}
-
-test "fuzz example" {
-    const Context = struct {
-        fn testOne(context: @This(), input: []const u8) anyerror!void {
-            _ = context;
-            // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-            try std.testing.expect(!std.mem.eql(u8, "canyoufindme", input));
-        }
-    };
-    try std.testing.fuzz(Context{}, Context.testOne, .{});
+    try linux_ghost.printBanner();
+    
+    const version = linux_ghost.getVersion();
+    const version_str = try version.toString(std.heap.page_allocator);
+    defer std.heap.page_allocator.free(version_str);
+    
+    std.debug.print("Ghost Kernel Version: {s}\n", .{version_str});
+    std.debug.print("Pure Zig Linux 6.15.5 Port\n");
+    std.debug.print("\nAvailable commands:\n");
+    std.debug.print("  zig build                    # Build Ghost Kernel (default)\n");
+    std.debug.print("  zig build ghost              # Build Ghost Kernel\n");
+    std.debug.print("  zig build run                # Run Ghost Kernel in QEMU\n");
+    std.debug.print("  zig build test               # Run kernel tests\n");
+    std.debug.print("  zig build info               # Show this information\n");
+    std.debug.print("  zig build gbuild             # Run kernel builder utility\n");
+    std.debug.print("\nFeatures:\n");
+    std.debug.print("  • Pure Zig implementation (memory safe)\n");
+    std.debug.print("  • BORE-EEVDF scheduler (gaming optimized)\n");
+    std.debug.print("  • Linux 6.15.5 compatibility\n");
+    std.debug.print("  • AMD Zen 4 optimizations\n");
+    std.debug.print("  • High-performance gaming focus\n");
+    std.debug.print("\nFor more information, see README.md\n");
 }

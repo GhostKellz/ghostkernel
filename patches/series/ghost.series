@@ -1,0 +1,27 @@
+# linux-ghost patch series
+# Bore-EEVDF scheduler + gaming optimizations + performance patches
+
+# Scheduler patches
+sched/0001-bore-eevdf.patch
+sched/0001-sched-ext.patch
+
+# Performance optimizations
+performance/0101-bbr3.patch
+performance/0102-lto-clang.patch  
+performance/0103-cpu-znver4.patch
+performance/0104-timer-1000hz.patch
+
+# Gaming patches
+gaming/0201-fsync.patch
+gaming/0202-nvidia-open.patch
+gaming/0203-wine-ntsync.patch
+gaming/0204-low-latency.patch
+
+# Memory management
+memory/0301-hugepages.patch
+memory/0302-mglru.patch
+memory/0303-zswap.patch
+
+# I/O optimizations  
+io/0401-io-uring.patch
+io/0402-nvme.patch
