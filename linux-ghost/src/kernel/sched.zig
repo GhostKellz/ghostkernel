@@ -40,15 +40,31 @@ pub const Task = struct {
     burst_time: u64,        // Recent burst duration
     burst_score: u32,       // Burst score (0-39)
     prev_burst: u64,        // Previous burst time
+    bore_penalty: u32,      // Current BORE penalty
+    
+    // Gaming optimizations
+    gaming_task: bool,      // Is this a gaming-related task?
+    frame_critical: bool,   // Is this frame-critical?
+    input_task: bool,       // Is this an input handling task?
+    audio_task: bool,       // Is this an audio processing task?
+    vrr_sync: bool,         // Is this VRR synchronization task?
     
     // Task timing
     exec_start: u64,        // When task started executing
     sum_exec_runtime: u64,  // Total execution time
     last_ran: u64,          // Last time task ran
+    wakeup_time: u64,       // When task was last woken up
+    
+    // Performance metrics
+    avg_runtime: u64,       // Average runtime per execution
+    max_runtime: u64,       // Maximum runtime observed
+    preemption_count: u32,  // Number of preemptions
+    voluntary_switches: u32, // Voluntary context switches
     
     // Scheduling metadata
     weight: u32,            // Load weight based on priority
     inv_weight: u32,        // Inverse weight for calculations
+    gaming_boost: u32,      // Gaming performance boost
     
     // Runqueue node
     rb_node: ?*RBNode,      // Red-black tree node for EEVDF timeline
@@ -69,19 +85,93 @@ pub const Task = struct {
             .burst_time = 0,
             .burst_score = 0,
             .prev_burst = 0,
+            .bore_penalty = 0,
+            .gaming_task = false,
+            .frame_critical = false,
+            .input_task = false,
+            .audio_task = false,
+            .vrr_sync = false,
             .exec_start = 0,
             .sum_exec_runtime = 0,
             .last_ran = 0,
+            .wakeup_time = 0,
+            .avg_runtime = 0,
+            .max_runtime = 0,
+            .preemption_count = 0,
+            .voluntary_switches = 0,
             .weight = weight,
             .inv_weight = WMULT_CONST / weight,
+            .gaming_boost = 0,
             .rb_node = null,
         };
     }
     
     /// Calculate task's virtual deadline
     pub fn calculateDeadline(self: *Self, now_ns: u64) void {
-        const slice_ns = self.slice;
+        var slice_ns = self.slice;
+        
+        // Gaming tasks get tighter deadlines for better responsiveness
+        if (self.gaming_task) {
+            slice_ns = slice_ns * 3 / 4; // 25% tighter deadline
+        }
+        
+        // Frame-critical tasks get even tighter deadlines
+        if (self.frame_critical) {
+            slice_ns = slice_ns / 2; // 50% tighter deadline
+        }
+        
+        // Input tasks get the tightest deadlines
+        if (self.input_task) {
+            slice_ns = slice_ns / 3; // 67% tighter deadline
+        }
+        
         self.deadline = self.vruntime + slice_ns;
+    }
+    
+    /// Mark task as gaming-related
+    pub fn setGamingTask(self: *Self, gaming: bool) void {
+        self.gaming_task = gaming;
+        if (gaming) {
+            self.gaming_boost = 2048; // 2x boost
+            // Reduce BORE penalty for gaming tasks
+            self.bore_penalty = self.bore_penalty / 2;
+        } else {
+            self.gaming_boost = 0;
+        }
+    }
+    
+    /// Mark task as frame-critical
+    pub fn setFrameCritical(self: *Self, critical: bool) void {
+        self.frame_critical = critical;
+        if (critical) {
+            self.gaming_task = true; // Frame-critical implies gaming
+            self.gaming_boost = 4096; // 4x boost
+        }
+    }
+    
+    /// Mark task as input handler
+    pub fn setInputTask(self: *Self, input: bool) void {
+        self.input_task = input;
+        if (input) {
+            self.gaming_task = true; // Input handling implies gaming
+            self.gaming_boost = 8192; // 8x boost - highest priority
+        }
+    }
+    
+    /// Mark task as audio processing
+    pub fn setAudioTask(self: *Self, audio: bool) void {
+        self.audio_task = audio;
+        if (audio) {
+            self.gaming_boost = 3072; // 3x boost
+        }
+    }
+    
+    /// Get effective weight with gaming boost
+    pub fn getEffectiveWeight(self: *Self) u32 {
+        if (self.gaming_boost > 0) {
+            return self.weight + self.gaming_boost;
+        }
+        return self.weight;
     }
     
     /// Update BORE burst score based on recent execution
@@ -135,6 +225,19 @@ pub const RunQueue = struct {
     bore_enabled: bool,
     burst_penalty: u32,    // Penalty for bursty tasks
     
+    // Gaming optimizations
+    gaming_mode: bool,     // Global gaming mode
+    frame_sync_enabled: bool, // Frame synchronization
+    input_boost: u32,      // Input task boost multiplier
+    audio_boost: u32,      // Audio task boost multiplier
+    frame_deadline_ns: u64, // Frame deadline in nanoseconds (for VRR)
+    
+    // Performance metrics
+    gaming_tasks: u32,     // Number of gaming tasks
+    frame_critical_tasks: u32, // Number of frame-critical tasks
+    input_tasks: u32,      // Number of input tasks
+    audio_tasks: u32,      // Number of audio tasks
+    
     const Self = @This();
     
     pub fn init() Self {
@@ -148,6 +251,15 @@ pub const RunQueue = struct {
             .current = null,
             .bore_enabled = true,
             .burst_penalty = 8, // Default BORE penalty
+            .gaming_mode = false,
+            .frame_sync_enabled = false,
+            .input_boost = 4,
+            .audio_boost = 2,
+            .frame_deadline_ns = 16666666, // 60 FPS default
+            .gaming_tasks = 0,
+            .frame_critical_tasks = 0,
+            .input_tasks = 0,
+            .audio_tasks = 0,
         };
     }
     
@@ -193,13 +305,55 @@ pub const RunQueue = struct {
         self.updateMinVruntime();
     }
     
-    /// Pick next task to run (EEVDF algorithm)
+    /// Enable gaming mode optimizations
+    pub fn enableGamingMode(self: *Self) void {
+        self.gaming_mode = true;
+        self.burst_penalty = 4; // Reduced BORE penalty for gaming
+        self.frame_sync_enabled = true;
+        
+        // Boost gaming tasks
+        // This would typically iterate through tasks and update their priorities
+    }
+    
+    /// Disable gaming mode optimizations
+    pub fn disableGamingMode(self: *Self) void {
+        self.gaming_mode = false;
+        self.burst_penalty = 8; // Default BORE penalty
+        self.frame_sync_enabled = false;
+    }
+    
+    /// Set frame rate for VRR synchronization
+    pub fn setFrameRate(self: *Self, fps: u32) void {
+        if (fps > 0) {
+            self.frame_deadline_ns = 1_000_000_000 / fps;
+        }
+    }
+    
+    /// Check if we're approaching frame deadline
+    pub fn isFrameDeadlineApproaching(self: *Self, current_time: u64) bool {
+        if (!self.frame_sync_enabled) return false;
+        
+        // Calculate time until next frame
+        const frame_start = current_time - (current_time % self.frame_deadline_ns);
+        const next_frame = frame_start + self.frame_deadline_ns;
+        const time_until_frame = next_frame - current_time;
+        
+        // Consider approaching if less than 25% of frame time remains
+        return time_until_frame < (self.frame_deadline_ns / 4);
+    }
+    
+    /// Pick next task to run (EEVDF algorithm with gaming optimizations)
     pub fn pickNext(self: *Self) ?*Task {
         // Start with leftmost (earliest deadline)
         var best = self.leftmost;
         if (best == null) return null;
         
         var node = best;
+        var gaming_best: ?*RBNode = null;
+        var input_best: ?*RBNode = null;
+        
+        const current_time = getCurrentTime();
+        const frame_deadline_approaching = self.isFrameDeadlineApproaching(current_time);
         
         // Find the eligible task with earliest deadline
         while (node) |n| {
@@ -207,6 +361,20 @@ pub const RunQueue = struct {
             
             // Check if task is eligible (virtual runtime <= min_vruntime)
             if (task.isEligible(self)) {
+                // Prioritize input tasks always
+                if (task.input_task) {
+                    if (input_best == null or task.deadline < input_best.?.task.deadline) {
+                        input_best = n;
+                    }
+                }
+                
+                // Prioritize frame-critical tasks when frame deadline approaches
+                if (frame_deadline_approaching and task.frame_critical) {
+                    if (gaming_best == null or task.deadline < gaming_best.?.task.deadline) {
+                        gaming_best = n;
+                    }
+                }
+                
                 // Among eligible tasks, prefer the one with earliest deadline
                 if (best == null or task.deadline < best.?.task.deadline) {
                     best = n;
@@ -214,6 +382,15 @@ pub const RunQueue = struct {
             }
             
             node = getNextNode(n);
+        }
+        
+        // Priority order: input > frame-critical (when deadline approaching) > normal
+        if (input_best) |ib| {
+            return ib.task;
+        }
+        
+        if (gaming_best) |gb| {
+            return gb.task;
         }
         
         return if (best) |b| b.task else null;
@@ -298,6 +475,21 @@ const SCHED_SLICE_MIN: u64 = 750_000; // 0.75ms minimum slice
 const SCHED_SLICE_MAX: u64 = 6_000_000; // 6ms maximum slice
 const WMULT_CONST: u32 = 1 << 32;
 
+/// Scheduler performance metrics
+pub const SchedulerMetrics = struct {
+    nr_running: u32 = 0,
+    gaming_tasks: u32 = 0,
+    frame_critical_tasks: u32 = 0,
+    input_tasks: u32 = 0,
+    audio_tasks: u32 = 0,
+    gaming_mode: bool = false,
+    frame_deadline_ns: u64 = 0,
+    min_vruntime: u64 = 0,
+    avg_vruntime: u64 = 0,
+    bore_enabled: bool = false,
+    burst_penalty: u32 = 0,
+};
+
 // Priority to weight mapping (from Linux kernel)
 const PRIO_WEIGHTS = [_]u32{
     88761, 71755, 56483, 46273, 36291, // -20 to -16
@@ -313,6 +505,7 @@ const PRIO_WEIGHTS = [_]u32{
 /// Global scheduler state
 var main_runqueue: RunQueue = undefined;
 var scheduler_initialized = false;
+var gaming_mode_enabled = false;
 
 /// Initialize the scheduler
 pub fn init() !void {
@@ -374,6 +567,89 @@ pub fn schedule() void {
 /// Check if there are runnable tasks
 pub fn hasRunnableTasks() bool {
     return scheduler_initialized and main_runqueue.nr_running > 0;
+}
+
+/// Enable global gaming mode
+pub fn enableGamingMode() void {
+    if (!scheduler_initialized) return;
+    
+    gaming_mode_enabled = true;
+    main_runqueue.enableGamingMode();
+    
+    console.writeString("Gaming mode enabled - BORE-EEVDF optimized for gaming\n");
+}
+
+/// Disable global gaming mode
+pub fn disableGamingMode() void {
+    if (!scheduler_initialized) return;
+    
+    gaming_mode_enabled = false;
+    main_runqueue.disableGamingMode();
+    
+    console.writeString("Gaming mode disabled - BORE-EEVDF back to normal\n");
+}
+
+/// Set frame rate for VRR synchronization
+pub fn setGamingFrameRate(fps: u32) void {
+    if (!scheduler_initialized) return;
+    
+    main_runqueue.setFrameRate(fps);
+    console.writeString("Gaming frame rate set to ");
+    // TODO: Add number printing
+    console.writeString(" FPS\n");
+}
+
+/// Mark a task as gaming-related
+pub fn markTaskAsGaming(task: *Task) void {
+    task.setGamingTask(true);
+    if (gaming_mode_enabled) {
+        main_runqueue.gaming_tasks += 1;
+    }
+}
+
+/// Mark a task as frame-critical
+pub fn markTaskAsFrameCritical(task: *Task) void {
+    task.setFrameCritical(true);
+    if (gaming_mode_enabled) {
+        main_runqueue.frame_critical_tasks += 1;
+    }
+}
+
+/// Mark a task as input handler
+pub fn markTaskAsInputHandler(task: *Task) void {
+    task.setInputTask(true);
+    if (gaming_mode_enabled) {
+        main_runqueue.input_tasks += 1;
+    }
+}
+
+/// Mark a task as audio processor
+pub fn markTaskAsAudioProcessor(task: *Task) void {
+    task.setAudioTask(true);
+    if (gaming_mode_enabled) {
+        main_runqueue.audio_tasks += 1;
+    }
+}
+
+/// Get scheduler performance metrics
+pub fn getSchedulerMetrics() SchedulerMetrics {
+    if (!scheduler_initialized) {
+        return SchedulerMetrics{};
+    }
+    
+    return SchedulerMetrics{
+        .nr_running = main_runqueue.nr_running,
+        .gaming_tasks = main_runqueue.gaming_tasks,
+        .frame_critical_tasks = main_runqueue.frame_critical_tasks,
+        .input_tasks = main_runqueue.input_tasks,
+        .audio_tasks = main_runqueue.audio_tasks,
+        .gaming_mode = gaming_mode_enabled,
+        .frame_deadline_ns = main_runqueue.frame_deadline_ns,
+        .min_vruntime = main_runqueue.min_vruntime,
+        .avg_vruntime = main_runqueue.avg_vruntime,
+        .bore_enabled = main_runqueue.bore_enabled,
+        .burst_penalty = main_runqueue.burst_penalty,
+    };
 }
 
 /// Create a new task
