@@ -9,8 +9,8 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    std.debug.print("Ghost Kernel Builder (gbuild)\n");
-    std.debug.print("=============================\n");
+    std.debug.print("Ghost Kernel Builder (gbuild)\n", .{});
+    std.debug.print("=============================\n", .{});
     
     if (args.len < 2) {
         try printUsage();

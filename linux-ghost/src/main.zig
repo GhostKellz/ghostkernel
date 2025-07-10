@@ -17,8 +17,13 @@ pub fn panic(message: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noretu
 
 export fn _start() noreturn {
     // Initialize console first
-    console.init();
-    console.print("Linux Ghost Kernel v6.15.5 Starting...\n");
+    console.init() catch {
+        // If console init fails, we can't even print an error
+        while (true) {
+            asm volatile ("hlt");
+        }
+    };
+    console.printf("Linux Ghost Kernel v6.15.5 Starting...\n", .{});
     
     // Initialize memory management
     memory.init() catch {
@@ -26,18 +31,19 @@ export fn _start() noreturn {
     };
     
     // Initialize interrupt handling
-    interrupts.init();
+    interrupts.init() catch {
+        panic("Failed to initialize interrupt handling");
+    };
     
     // Initialize kernel subsystems
-    kernel.init() catch {
+    kernel.initializeSubsystems() catch {
         panic("Failed to initialize kernel subsystems");
     };
     
-    console.print("Kernel initialization complete\n");
+    console.printf("Kernel initialization complete\n", .{});
     
-    // Main kernel loop
+    // Main kernel loop - basic idle loop
     while (true) {
-        kernel.schedule();
         asm volatile ("hlt");
     }
 }

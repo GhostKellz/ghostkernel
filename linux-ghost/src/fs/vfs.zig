@@ -460,11 +460,11 @@ pub const VFS = struct {
         self.filesystem_types.deinit();
         
         // Clean up mounts
-        var mount = self.mounts;
-        while (mount) |m| {
+        var current_mount = self.mounts;
+        while (current_mount) |m| {
             const next = m.next;
             self.allocator.destroy(m);
-            mount = next;
+            current_mount = next;
         }
     }
     
@@ -690,7 +690,7 @@ test "path validation" {
 }
 
 test "file mode operations" {
-    var mode = FileMode{
+    const mode = FileMode{
         .user_read = true,
         .user_write = true,
         .user_execute = false,
@@ -704,7 +704,6 @@ test "file mode operations" {
 }
 
 test "inode reference counting" {
-    const allocator = std.testing.allocator;
     
     var sb = SuperBlock{
         .block_size = 4096,

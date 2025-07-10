@@ -1,12 +1,12 @@
 .{
     .name = .ghostkernel,
-    .version = "6.15.5",
+    .version = "0.1.0",
     .minimum_zig_version = "0.15.0",
     .fingerprint = 0x856a61e5864955c4,
     .dependencies = .{
         .ghostnv = .{
-            .url = "https://github.com/ghostkellz/ghostnv/archive/refs/heads/main.tar.gz",
-            .hash = "ghostnv-0.0.0-EX5M64fR1wUHvYBA4FDRQwhy_PMaVLj3ozoH-DWiZvA9",
+            .url = "https://github.com/ghostkellz/ghostnv/archive/main.tar.gz",
+            .hash = "ghostnv-0.2.0-EX5M62jCnh0Qn9MoLkh4ShGAUHD5aWv-Lp1_VsaxHDqd",
         },
     },
     .paths = .{

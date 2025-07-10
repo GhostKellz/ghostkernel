@@ -81,7 +81,7 @@ pub const GamingIOParams = struct {
 pub const GamingIOFlags = struct {
     zero_copy: bool = false,       // Use zero-copy I/O
     direct: bool = false,          // Direct I/O (bypass cache)
-    async: bool = false,           // Asynchronous I/O
+    asynchronous: bool = false,    // Asynchronous I/O
     priority: IOPriority = .normal, // I/O priority
     
     const IOPriority = enum {
@@ -204,7 +204,7 @@ pub const GamingSyscallHandler = struct {
         const params = params_ptr.*;
         
         // Gaming-optimized memory mapping
-        var mapping_addr = params.addr;
+        _ = params.addr;
         
         // Apply gaming optimizations
         if (params.gaming_flags.numa_local) {
@@ -283,6 +283,7 @@ pub const GamingSyscallHandler = struct {
     }
     
     fn sys_gaming_write(self: *GamingSyscallHandler, args: [6]u64) !i64 {
+        _ = self;
         const params_ptr = @as(*const GamingIOParams, @ptrFromInt(args[0]));
         const params = params_ptr.*;
         
@@ -291,6 +292,7 @@ pub const GamingSyscallHandler = struct {
     }
     
     fn sys_gaming_pread(self: *GamingSyscallHandler, args: [6]u64) !i64 {
+        _ = self;
         const params_ptr = @as(*const GamingIOParams, @ptrFromInt(args[0]));
         const params = params_ptr.*;
         

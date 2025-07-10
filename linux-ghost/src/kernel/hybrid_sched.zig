@@ -382,7 +382,7 @@ pub const CPUTopology = struct {
         }
     }
     
-    fn detectIntelHybrid(self: *Self, cpu_info: CPUInfo) !void {
+    fn detectIntelHybridArchitecture(self: *Self, cpu_info: CPUInfo) !void {
         // Detect Intel Alder Lake (12th gen) and Raptor Lake (13th gen)
         if (cpu_info.family == 0x6) {
             switch (cpu_info.model) {
@@ -737,7 +737,7 @@ pub const HybridScheduler = struct {
             if (core.load_avg > 2.0 and core.runqueue.tasks.items.len > 1) {
                 // Find background tasks to migrate
                 for (core.runqueue.tasks.items) |task| {
-                    const hybrid_task = @fieldParentPtr(HybridTask, "base_task", task);
+                    const hybrid_task = @as(*HybridTask, @fieldParentPtr("base_task", task));
                     if (hybrid_task.workload_type == .background) {
                         // Find a less loaded core of appropriate type
                         const target_core = self.findLeastLoadedCore(.efficiency);
@@ -865,7 +865,6 @@ test "task affinity scoring" {
 }
 
 test "gaming task optimization" {
-    const allocator = std.testing.allocator;
     
     var task = HybridTask{
         .base_task = sched.Task{

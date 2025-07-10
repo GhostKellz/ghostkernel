@@ -170,16 +170,16 @@ pub const RealtimeCompactor = struct {
     }
     
     /// Register gaming memory range for priority handling
-    pub fn registerGamingMemory(self: *Self, start: usize, end: usize, pid: u32) !void {
+    pub fn registerGamingMemory(self: *Self, start_addr: usize, end_addr: usize, pid: u32) !void {
         try self.gaming_memory_ranges.append(MemoryRange{
-            .start = start,
-            .end = end,
+            .start = start_addr,
+            .end = end_addr,
             .pid = pid,
         });
         
         // Mark regions containing gaming memory
         for (self.regions.items) |*region| {
-            if (region.start_addr <= start and end <= region.end_addr) {
+            if (region.start_addr <= start_addr and end_addr <= region.end_addr) {
                 region.contains_gaming_memory = true;
             }
         }
@@ -463,7 +463,6 @@ pub fn initRealtimeCompaction(allocator: std.mem.Allocator) !*RealtimeCompactor 
 // Export for scheduler integration
 pub fn onGamingProcessCreate(pid: u32) !void {
     // This would be called when a gaming process is created
-    _ = pid;
     console.printf("Gaming process {} created - memory compaction aware\n", .{pid});
 }
 

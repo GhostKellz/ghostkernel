@@ -111,6 +111,12 @@ pub fn printf(comptime fmt: []const u8, args: anytype) void {
     writeString(str);
 }
 
+/// Panic print function for kernel panics
+pub fn panic_print(comptime fmt: []const u8, args: anytype) void {
+    setColor(.red, .black);
+    printf(fmt, args);
+}
+
 /// Clear the screen
 pub fn clear() void {
     const entry = makeVgaEntry(' ', console_state.color);
@@ -150,7 +156,7 @@ fn putCharAt(char: u8, x: usize, y: usize) void {
 
 /// Make VGA color byte
 fn makeColor(fg: Color, bg: Color) u8 {
-    return @intFromEnum(fg) | (@intFromEnum(bg) << 4);
+    return @intFromEnum(fg) | (@as(u8, @intFromEnum(bg)) << 4);
 }
 
 /// Make VGA entry (character + color)

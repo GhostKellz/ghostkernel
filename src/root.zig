@@ -49,7 +49,7 @@ pub fn getVersion() Version {
 
 pub fn printBanner() !void {
     const stdout = std.io.getStdOut().writer();
-    try stdout.print(
+    try stdout.print("{s}", .{
         \\
         \\  _____ _               _      _  __                    _ 
         \\ |  ___| |             | |    | |/ /                   | |
@@ -65,7 +65,7 @@ pub fn printBanner() !void {
         \\Built with Zig for ultimate safety and speed
         \\
         \\
-    );
+    });
 }
 
 pub const Features = struct {

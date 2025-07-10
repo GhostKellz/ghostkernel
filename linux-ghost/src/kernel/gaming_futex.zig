@@ -374,7 +374,6 @@ pub const GamingFutex = struct {
     }
     
     fn applyPriorityInheritance(self: *Self, bucket: *GamingFutexBucket, waiter: GamingFutexWaiter) void {
-        _ = self;
         _ = bucket;
         
         // Find the current lock holder and boost their priority

@@ -25,7 +25,7 @@ pub const DeviceType = enum(u8) {
 pub const PowerState = enum(u8) {
     on = 0,             // Fully powered
     standby = 1,        // Quick wake
-    suspend = 2,        // Memory retained
+    suspended = 2,      // Memory retained
     hibernate = 3,      // Power off, state saved
     off = 4,            // Completely powered off
 };
@@ -71,8 +71,8 @@ pub const InterruptFlags = packed struct(u32) {
 pub const DeviceOps = struct {
     probe: ?*const fn (device: *Device) DriverError!void = null,
     remove: ?*const fn (device: *Device) void = null,
-    suspend: ?*const fn (device: *Device, state: PowerState) DriverError!void = null,
-    resume: ?*const fn (device: *Device) DriverError!void = null,
+    device_suspend: ?*const fn (device: *Device, state: PowerState) DriverError!void = null,
+    device_resume: ?*const fn (device: *Device) DriverError!void = null,
     shutdown: ?*const fn (device: *Device) void = null,
     
     // I/O operations
@@ -409,13 +409,13 @@ pub const Device = struct {
     
     pub fn setPowerState(self: *Self, state: PowerState) DriverError!void {
         switch (state) {
-            .suspend => {
-                if (self.ops.suspend) |suspend_fn| {
+            .suspended => {
+                if (self.ops.device_suspend) |suspend_fn| {
                     try suspend_fn(self, state);
                 }
             },
             .on => {
-                if (self.ops.resume) |resume_fn| {
+                if (self.ops.device_resume) |resume_fn| {
                     try resume_fn(self);
                 }
             },

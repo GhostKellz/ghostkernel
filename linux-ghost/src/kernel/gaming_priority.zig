@@ -399,6 +399,8 @@ pub const GamingPriorityManager = struct {
     }
     
     fn propagatePriorityInheritance(self: *Self, dependent_pid: u32, dependency_pid: u32, dep_type: DependencyType, strength: f32) !void {
+        _ = dep_type;
+        _ = strength;
         const dependent_process = self.gaming_processes.get(dependent_pid) orelse return;
         const dependency_process = self.gaming_processes.getPtr(dependency_pid) orelse return;
         
@@ -431,6 +433,7 @@ pub const GamingPriorityManager = struct {
     }
     
     fn cleanupStaleDependencies(self: *Self, process: *GamingProcess) void {
+        _ = self;
         var i: usize = 0;
         while (i < process.dependencies.items.len) {
             if (process.dependencies.items[i].isStale()) {

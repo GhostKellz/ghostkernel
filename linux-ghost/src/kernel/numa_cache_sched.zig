@@ -100,6 +100,7 @@ const NUMACacheInfo = struct {
     cache_line_size: u8 = 64,       // Cache line size in bytes
     cache_associativity: u8 = 16,   // Cache associativity
     prefetcher_aggressiveness: u8 = 2, // 0=conservative, 3=aggressive
+    total_cache_mb: u32 = 0, // Added field for compatibility
     
     pub fn getTotalCacheMB(self: *const NUMACacheInfo) u32 {
         return self.l3_size_mb + self.x3d_cache_size_mb;
@@ -133,8 +134,6 @@ const NUMACacheInfo = struct {
             },
         };
     }
-    
-    total_cache_mb: u32 = 0, // Added field for compatibility
 };
 
 /// Workload cache profile for optimization

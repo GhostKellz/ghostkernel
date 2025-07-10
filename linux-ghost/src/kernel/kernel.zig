@@ -120,7 +120,7 @@ pub fn initializeSubsystems() !void {
     console.writeString("  Scheduler: OK\n");
     
     // Initialize gaming optimizations if enabled
-    if (comptime config.CONFIG_GAMING_OPTIMIZATIONS) {
+    if (comptime @hasDecl(config, "CONFIG_GAMING_OPTIMIZATIONS") and config.CONFIG_GAMING_OPTIMIZATIONS) {
         subsystem_states.gaming_subsystems = .initializing;
         try initializeGamingSubsystems();
         subsystem_states.gaming_subsystems = .running;
@@ -139,7 +139,7 @@ fn initializeGamingSubsystems() !void {
     
     // Initialize gaming page fault handler
     if (comptime config.CONFIG_GAMING_OPTIMIZATIONS) {
-        try gaming_pagefault.initGamingPageFault(allocator);
+        _ = try gaming_pagefault.initGamingPageFaults(allocator);
         console.writeString("    Gaming Page Fault Handler: OK\n");
     }
     

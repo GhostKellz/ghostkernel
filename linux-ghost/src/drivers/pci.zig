@@ -245,12 +245,12 @@ pub const PCIDevice = struct {
         const address = makePCIAddress(self.bus, self.device_num, self.function, offset);
         
         // Write address to CONFIG_ADDRESS
-        driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" }
-            .writeDword(0, address);
+        var config_port = driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" };
+        config_port.writeDword(0, address);
         
         // Read data from CONFIG_DATA
-        const data = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
-            .readDword(0);
+        var data_port = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" };
+        const data = data_port.readDword(0);
         
         return switch (T) {
             u8 => @truncate(data >> @as(u5, @truncate((offset & 3) * 8))),
@@ -264,29 +264,27 @@ pub const PCIDevice = struct {
         const address = makePCIAddress(self.bus, self.device_num, self.function, offset);
         
         // Write address to CONFIG_ADDRESS
-        driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" }
-            .writeDword(0, address);
+        const config_port = driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" };
+        config_port.writeDword(0, address);
         
         switch (T) {
             u8 => {
-                var data = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
-                    .readDword(0);
+                const data_port = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" };
+                var data = data_port.readDword(0);
                 const shift = @as(u5, @truncate((offset & 3) * 8));
                 data = (data & ~(@as(u32, 0xFF) << shift)) | (@as(u32, value) << shift);
-                driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
-                    .writeDword(0, data);
+                data_port.writeDword(0, data);
             },
             u16 => {
-                var data = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
-                    .readDword(0);
+                const data_port = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" };
+                var data = data_port.readDword(0);
                 const shift = @as(u5, @truncate((offset & 2) * 8));
                 data = (data & ~(@as(u32, 0xFFFF) << shift)) | (@as(u32, value) << shift);
-                driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
-                    .writeDword(0, data);
+                data_port.writeDword(0, data);
             },
             u32 => {
-                driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
-                    .writeDword(0, value);
+                const data_port = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" };
+                data_port.writeDword(0, value);
             },
             else => @compileError("Invalid PCI config write type"),
         }
@@ -434,8 +432,8 @@ pub const PCIDevice = struct {
 var pci_device_ops = driver_framework.DeviceOps{
     .probe = pciProbe,
     .remove = pciRemove,
-    .suspend = pciSuspend,
-    .resume = pciResume,
+    .device_suspend = pciSuspend,
+    .device_resume = pciResume,
 };
 
 fn pciProbe(device: *driver_framework.Device) driver_framework.DriverError!void {
@@ -598,8 +596,8 @@ pub const PCIScanner = struct {
         _ = self;
         const address = makePCIAddress(bus, @truncate(device), @truncate(function), offset);
         
-        driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" }
-            .writeDword(0, address);
+        const config_port = driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" };
+        config_port.writeDword(0, address);
         
         const data = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
             .readDword(0);
@@ -611,8 +609,8 @@ pub const PCIScanner = struct {
         _ = self;
         const address = makePCIAddress(bus, @truncate(device), @truncate(function), offset);
         
-        driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" }
-            .writeDword(0, address);
+        const config_port = driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" };
+        config_port.writeDword(0, address);
         
         const data = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
             .readDword(0);

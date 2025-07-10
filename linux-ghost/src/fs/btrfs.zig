@@ -756,6 +756,7 @@ pub const btrfs_filesystem_type = vfs.FilesystemType{
 };
 
 fn btrfsMount(dev_name: []const u8, mount_point: []const u8, flags: u32, data: ?[]const u8) vfs.VFSError!*vfs.SuperBlock {
+    _ = dev_name;
     _ = mount_point;
     _ = flags;
     _ = data;

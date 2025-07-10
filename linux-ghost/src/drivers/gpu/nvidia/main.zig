@@ -4,10 +4,10 @@
 const std = @import("std");
 const config = @import("config");
 
-// Kernel subsystem imports (will be created)
-const pci = @import("../../pci.zig");
-const mm = @import("../../mm/memory.zig");
-const interrupts = @import("../../interrupts.zig");
+// Kernel subsystem imports
+const pci = @import("pci");
+const mm = @import("mm");
+const interrupts = @import("interrupts");
 
 // GhostNV driver components
 const ghostnv_core = @import("core/ghostnv_core.zig");

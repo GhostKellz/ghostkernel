@@ -219,7 +219,6 @@ pub const Process = struct {
             while (child) |c| {
                 if (c.state == .zombie) {
                     const pid = c.pid;
-                    const exit_code = c.exit_code;
                     
                     // Remove from children list
                     removeChild(self, c);
@@ -422,7 +421,7 @@ pub fn getCurrentProcess() ?*Process {
     return current_process;
 }
 
-/// Assembly context switch implementation
+// Assembly context switch implementation
 comptime {
     asm (
         \\.global contextSwitch

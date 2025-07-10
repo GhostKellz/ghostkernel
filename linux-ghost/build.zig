@@ -120,6 +120,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
+        ghostvibrance.root_module.addImport("ghostnv", ghostnv_dep.module("ghostnv"));
         
         b.installArtifact(ghostvibrance);
         
@@ -135,6 +136,25 @@ pub fn build(b: *std.Build) void {
         const nvidia_module = b.addModule("nvidia", .{
             .root_source_file = b.path("src/drivers/gpu/nvidia/main.zig"),
         });
+        
+        // Add required dependencies to nvidia module
+        const pci_module = b.addModule("pci", .{
+            .root_source_file = b.path("src/drivers/pci.zig"),
+        });
+        const mm_module = b.addModule("mm", .{
+            .root_source_file = b.path("src/mm/mm_wrapper.zig"),
+        });
+        const interrupts_module = b.addModule("interrupts", .{
+            .root_source_file = b.path("src/arch/x86_64/interrupts.zig"),
+        });
+        const kernel_module = b.addModule("kernel", .{
+            .root_source_file = b.path("src/kernel/kernel.zig"),
+        });
+        interrupts_module.addImport("kernel", kernel_module);
+        
+        nvidia_module.addImport("pci", pci_module);
+        nvidia_module.addImport("mm", mm_module);
+        nvidia_module.addImport("interrupts", interrupts_module);
         gpu_tests.root_module.addImport("nvidia", nvidia_module);
         gpu_tests.root_module.addImport("ghostnv", ghostnv_dep.module("ghostnv"));
         
@@ -147,6 +167,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
+        nvenc_test.root_module.addImport("ghostnv", ghostnv_dep.module("ghostnv"));
         
         b.installArtifact(nvenc_test);
     }

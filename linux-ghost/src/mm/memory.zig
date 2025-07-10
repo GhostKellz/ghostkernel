@@ -65,7 +65,7 @@ pub const PageFrame = struct {
 /// Page flags
 pub const PageFlags = packed struct {
     locked: bool = false,
-    error: bool = false,
+    has_error: bool = false,
     referenced: bool = false,
     uptodate: bool = false,
     dirty: bool = false,
@@ -138,8 +138,8 @@ pub const Zone = struct {
             page.ref_count = 1;
             page.flags.buddy = false;
             
-            self.nr_alloc += @as(u64, 1) << order;
-            self.nr_free_pages -= @as(u64, 1) << order;
+            self.nr_alloc += @as(u64, 1) << @as(u6, @intCast(order));
+            self.nr_free_pages -= @as(u64, 1) << @as(u6, @intCast(order));
             
             return page;
         }
@@ -204,7 +204,7 @@ pub const Zone = struct {
         var current_order = from_order;
         while (current_order > to_order) : (current_order -= 1) {
             // Create buddy page
-            const buddy_pfn = page.pfn + (@as(u64, 1) << (current_order - 1));
+            const buddy_pfn = page.pfn + (@as(u64, 1) << @as(u6, @intCast(current_order - 1)));
             const buddy = getBuddyPage(buddy_pfn) orelse return null;
             
             buddy.* = PageFrame.init(buddy_pfn, page.zone);
@@ -305,8 +305,7 @@ pub const MemoryDescriptor = struct {
 // File placeholder
 const File = struct {};
 
-// Memory layout constants
-const KERNEL_VIRT_BASE: u64 = 0xffff_8800_0000_0000;
+// Memory layout constants  
 const USER_VIRT_MAX: u64 = 0x0000_7fff_ffff_f000;
 
 // Global memory management state
@@ -463,7 +462,7 @@ pub fn getKernelAllocator() std.mem.Allocator {
     return kernel_allocator_instance.?;
 }
 
-fn kernelAlloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+fn kernelAlloc(ctx: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
     _ = ctx;
     _ = ptr_align;
     _ = ret_addr;
@@ -480,7 +479,7 @@ fn kernelAlloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]
     return @as([*]u8, @ptrFromInt(virt_addr));
 }
 
-fn kernelResize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+fn kernelResize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
     _ = ctx;
     _ = buf_align;
     _ = ret_addr;

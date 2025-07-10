@@ -108,6 +108,7 @@ pub const Task = struct {
     
     /// Calculate task's virtual deadline
     pub fn calculateDeadline(self: *Self, now_ns: u64) void {
+        _ = now_ns;
         var slice_ns = self.slice;
         
         // Gaming tasks get tighter deadlines for better responsiveness
