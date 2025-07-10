@@ -3,3 +3,4 @@
 *.o
 *.exe
 kernel-source/
+tools/zig-latest/
