@@ -9,6 +9,9 @@ pub const PAGE_SIZE: usize = 4096;
 pub const PAGE_SHIFT: u6 = 12;
 pub const PAGE_MASK: usize = PAGE_SIZE - 1;
 
+/// Virtual memory layout constants
+pub const KERNEL_VIRT_BASE: u64 = 0xFFFF800000000000; // Kernel virtual base address
+
 /// Memory zone types
 pub const ZoneType = enum {
     dma,        // DMA-able memory (0-16MB)
@@ -256,7 +259,7 @@ pub const VMA = struct {
     start: u64,
     end: u64,
     flags: VMAFlags,
-    file: ?*File,
+    file: ?*anyopaque, // File pointer (would be *File in real implementation)
     offset: u64,
     
     // Linked list
@@ -432,4 +435,69 @@ fn printNumber(num: u64) void {
     var buffer: [32]u8 = undefined;
     const str = std.fmt.bufPrint(&buffer, "{d}", .{num}) catch "?";
     console.writeString(str);
+}
+
+// Global kernel allocator (simple page allocator wrapper)
+var kernel_allocator_instance: ?std.mem.Allocator = null;
+
+/// Get the kernel allocator
+pub fn getKernelAllocator() std.mem.Allocator {
+    // For now, return a simple page allocator
+    // In a real implementation, this would be a proper slab allocator
+    if (kernel_allocator_instance) |allocator| {
+        return allocator;
+    }
+    
+    // Create a simple allocator that uses our page allocator
+    const vtable = std.mem.Allocator.VTable{
+        .alloc = kernelAlloc,
+        .resize = kernelResize,
+        .free = kernelFree,
+    };
+    
+    kernel_allocator_instance = std.mem.Allocator{
+        .ptr = undefined,
+        .vtable = &vtable,
+    };
+    
+    return kernel_allocator_instance.?;
+}
+
+fn kernelAlloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+    _ = ctx;
+    _ = ptr_align;
+    _ = ret_addr;
+    
+    // Calculate pages needed
+    const pages_needed = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+    const order = std.math.log2_int(u64, std.math.ceilPowerOfTwo(u64, pages_needed) catch return null);
+    
+    // Allocate pages
+    const page = allocPagesGlobal(@intCast(order)) orelse return null;
+    
+    // Convert to virtual address
+    const virt_addr = page.getVirtAddr();
+    return @as([*]u8, @ptrFromInt(virt_addr));
+}
+
+fn kernelResize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+    _ = ctx;
+    _ = buf_align;
+    _ = ret_addr;
+    
+    // For simplicity, we don't support resize
+    _ = buf;
+    _ = new_len;
+    return false;
+}
+
+fn kernelFree(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+    _ = ctx;
+    _ = buf_align;
+    _ = ret_addr;
+    
+    // Convert virtual address back to page frame
+    // This is simplified - real implementation would track allocations
+    _ = buf;
+    // freePagesGlobal(page);
 }

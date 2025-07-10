@@ -51,10 +51,10 @@
   - Implement socket interfaces
   - Add ethernet driver support
 
-- [ ] **USB Subsystem**
-  - Port USB core to Zig
-  - Implement HID (keyboard/mouse) support
-  - Add mass storage support
+- [x] **USB Subsystem** ✅
+  - Port USB core to Zig ✅
+  - Implement HID (keyboard/mouse) support ✅
+  - Add mass storage support ✅
 
 - [ ] **Audio Subsystem**
   - Port ALSA core to Zig
@@ -95,7 +95,7 @@
 
 ### Phase 2: Hardware Support (6-12 months)
 - [ ] GhostNV NVIDIA driver
-- [ ] Basic USB and input drivers
+- [x] Basic USB and input drivers ✅
 - [ ] Network subsystem
 - [ ] Audio subsystem
 - [ ] Storage drivers (SATA/NVMe)
@@ -207,7 +207,7 @@ zig build test      # Run kernel tests
 **⚡ SHORT-TERM (2-6 months):**
 1. Complete device driver framework
 2. GhostNV basic graphics support
-3. USB and input driver support
+3. USB and input driver support ✅
 
 **🎯 MEDIUM-TERM (6-12 months):**
 1. Gaming-ready GhostNV driver

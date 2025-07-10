@@ -6,6 +6,17 @@ const console = @import("../arch/x86_64/console.zig");
 const memory = @import("../mm/memory.zig");
 const sched = @import("../kernel/sched.zig");
 const interrupts = @import("../arch/x86_64/interrupts.zig");
+const config = @import("config");
+
+// Gaming optimization imports - direct file imports
+const gaming_pagefault = if (config.CONFIG_GAMING_OPTIMIZATIONS) @import("../mm/gaming_pagefault.zig") else struct {};
+const realtime_compaction = if (config.CONFIG_REALTIME_COMPACTION) @import("../mm/realtime_compaction.zig") else struct {};
+const gaming_futex = if (config.CONFIG_GAMING_FUTEX) @import("gaming_futex.zig") else struct {};
+const gaming_priority = if (config.CONFIG_GAMING_PRIORITY) @import("gaming_priority.zig") else struct {};
+const direct_storage = if (config.CONFIG_DIRECT_STORAGE) @import("../fs/direct_storage.zig") else struct {};
+const numa_cache_sched = if (config.CONFIG_NUMA_CACHE_AWARE) @import("numa_cache_sched.zig") else struct {};
+const gaming_syscalls = if (config.CONFIG_GAMING_SYSCALLS) @import("gaming_syscalls.zig") else struct {};
+const hw_timestamp_sched = if (config.CONFIG_HW_TIMESTAMP_SCHED) @import("hw_timestamp_sched.zig") else struct {};
 
 pub const KernelInfo = struct {
     version: Version,
@@ -60,6 +71,9 @@ pub var subsystem_states = struct {
     network: SubsystemState = .uninitialized,
     drivers: SubsystemState = .uninitialized,
     console: SubsystemState = .uninitialized,
+    gaming_subsystems: SubsystemState = .uninitialized,
+    direct_storage: SubsystemState = .uninitialized,
+    hw_timestamp: SubsystemState = .uninitialized,
 }{};
 
 /// Kernel panic handler
@@ -105,8 +119,75 @@ pub fn initializeSubsystems() !void {
     subsystem_states.scheduler = .running;
     console.writeString("  Scheduler: OK\n");
     
+    // Initialize gaming optimizations if enabled
+    if (comptime config.CONFIG_GAMING_OPTIMIZATIONS) {
+        subsystem_states.gaming_subsystems = .initializing;
+        try initializeGamingSubsystems();
+        subsystem_states.gaming_subsystems = .running;
+        console.setColor(.green, .black);
+        console.writeString("  Gaming Optimizations: OK\n");
+        console.setColor(.white, .black);
+    }
+    
     // TODO: Initialize other subsystems
     console.writeString("linux-zghost: Subsystem initialization complete\n");
+}
+
+/// Initialize gaming-specific subsystems
+fn initializeGamingSubsystems() !void {
+    const allocator = memory.getKernelAllocator();
+    
+    // Initialize gaming page fault handler
+    if (comptime config.CONFIG_GAMING_OPTIMIZATIONS) {
+        try gaming_pagefault.initGamingPageFault(allocator);
+        console.writeString("    Gaming Page Fault Handler: OK\n");
+    }
+    
+    // Initialize real-time memory compaction
+    if (comptime config.CONFIG_REALTIME_COMPACTION) {
+        _ = try realtime_compaction.initRealtimeCompaction(allocator);
+        console.writeString("    Real-time Memory Compaction: OK\n");
+    }
+    
+    // Initialize gaming FUTEX
+    if (comptime config.CONFIG_GAMING_FUTEX) {
+        try gaming_futex.initGamingFutex(allocator);
+        console.writeString("    Gaming FUTEX: OK\n");
+    }
+    
+    // Initialize gaming priority inheritance
+    if (comptime config.CONFIG_GAMING_PRIORITY) {
+        try gaming_priority.initGamingPriority(allocator);
+        console.writeString("    Gaming Priority Inheritance: OK\n");
+    }
+    
+    // Initialize Direct Storage API
+    if (comptime config.CONFIG_DIRECT_STORAGE) {
+        subsystem_states.direct_storage = .initializing;
+        try direct_storage.initDirectStorage(allocator);
+        subsystem_states.direct_storage = .running;
+        console.writeString("    Direct Storage API: OK\n");
+    }
+    
+    // Initialize NUMA cache-aware scheduling
+    if (comptime config.CONFIG_NUMA_CACHE_AWARE) {
+        try numa_cache_sched.initNUMACacheScheduler(allocator);
+        console.writeString("    NUMA Cache-Aware Scheduling: OK\n");
+    }
+    
+    // Initialize gaming system calls
+    if (comptime config.CONFIG_GAMING_SYSCALLS) {
+        try gaming_syscalls.initGamingSyscalls(allocator);
+        console.writeString("    Gaming System Calls: OK\n");
+    }
+    
+    // Initialize hardware timestamp scheduling
+    if (comptime config.CONFIG_HW_TIMESTAMP_SCHED) {
+        subsystem_states.hw_timestamp = .initializing;
+        try hw_timestamp_sched.initHardwareTimestampScheduling(allocator);
+        subsystem_states.hw_timestamp = .running;
+        console.writeString("    Hardware Timestamp Scheduling: OK\n");
+    }
 }
 
 /// Print kernel banner and information

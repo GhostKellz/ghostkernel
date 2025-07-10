@@ -1,0 +1,10 @@
+pub const driver_mode: []const u8 = "hybrid";
+pub const patched_mode: bool = false;
+pub const realtime_mode: bool = false;
+pub const audio_mode: bool = false;
+pub const debug_mode: bool = false;
+pub const cuda_mode: bool = true;
+pub const nvenc_mode: bool = true;
+pub const vrr_mode: bool = true;
+pub const gaming_mode: bool = true;
+pub const frame_gen_mode: bool = false;

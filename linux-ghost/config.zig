@@ -31,6 +31,20 @@ pub const KernelConfig = struct {
     nvidia_open_support: bool = true,
     low_latency_patches: bool = true,
     
+    // GPU configuration
+    gpu_nvidia: bool = true,
+    gpu_memory_size: usize = 512 * 1024 * 1024, // 512MB GPU heap
+    gpu_command_timeout_ms: u32 = 5000,
+    gpu_enable_power_management: bool = true,
+    gpu_enable_compute: bool = true,
+    gpu_enable_display: bool = true,
+    gpu_low_latency_mode: bool = false,
+    gpu_gaming_optimizations: bool = true,
+    gpu_ai_acceleration: bool = true,
+    gpu_enable_vrr: bool = true,
+    gpu_enable_raytracing: bool = true,
+    gpu_enable_dlss: bool = true,
+    
     // Build options
     debug_info: bool = false,
     module_compression: bool = true,
