@@ -26,47 +26,6 @@ Then fetch the dependency:
 zig fetch --save https://github.com/ghostkellz/ghostnv
 ```
 
-### Method 2: Git Submodule
-
-```bash
-git submodule add https://github.com/ghostkellz/ghostnv.git deps/ghostnv
-git submodule update --init --recursive
-```
-
-## Integration in Your Kernel's build.zig
-
-```zig
-const std = @import("std");
-
-pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
-
-    // Add GhostNV dependency
-    const ghostnv_dep = b.dependency("ghostnv", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    
-    const ghostnv_mod = ghostnv_dep.module("ghostnv");
-
-    // Your kernel executable
-    const kernel_exe = b.addExecutable(.{
-        .name = "ghostkernel",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "ghostnv", .module = ghostnv_mod },
-            },
-        }),
-    });
-
-    b.installArtifact(kernel_exe);
-}
-```
-
 ## Using GhostNV in Your Kernel Code
 
 ### Basic Integration
