@@ -5,6 +5,12 @@ const std = @import("std");
 const console = @import("console.zig");
 const memory = @import("../../mm/memory.zig");
 
+/// Page protection flags for mapRange
+pub const PAGE_PRESENT: u32 = 1 << 0;
+pub const PAGE_WRITABLE: u32 = 1 << 1;
+pub const PAGE_USER: u32 = 1 << 2;
+pub const PAGE_NX: u32 = 1 << 3;
+
 /// Page table entry flags
 pub const PageFlags = packed struct {
     present: bool = false,         // Page is present in memory
@@ -207,6 +213,24 @@ pub const AddressSpace = struct {
         if (!pt_entry.present) return null;
         
         return pt_entry.toPhysAddr() + vaddr.offset;
+    }
+    
+    pub fn mapRange(self: *Self, virt_start: u64, phys_start: u64, size: u64, flags: u32) !void {
+        const pages = size / memory.PAGE_SIZE;
+        var i: u64 = 0;
+        while (i < pages) : (i += 1) {
+            var page_flags = PageFlags{};
+            page_flags.present = (flags & PAGE_PRESENT) != 0;
+            page_flags.writable = (flags & PAGE_WRITABLE) != 0;
+            page_flags.no_execute = (flags & PAGE_NX) != 0;
+            page_flags.user = (flags & PAGE_USER) != 0;
+            
+            try self.mapPage(
+                virt_start + (i * memory.PAGE_SIZE),
+                phys_start + (i * memory.PAGE_SIZE),
+                page_flags
+            );
+        }
     }
     
     pub fn switchTo(self: *Self) void {

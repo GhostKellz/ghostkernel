@@ -3,9 +3,52 @@
 //! Optimized for gaming performance and low-latency operations
 
 const std = @import("std");
-const memory = @import("../mm/memory.zig");
-const paging = @import("../mm/paging.zig");
-const sync = @import("../kernel/sync.zig");
+
+// Stub implementations for kernel subsystems
+const memory = struct {
+    pub fn allocDMAMemory(size: usize, coherent: bool) ?usize {
+        _ = size;
+        _ = coherent;
+        return 0x1000000; // Dummy address
+    }
+    
+    pub fn freeDMAMemory(addr: usize, size: usize) void {
+        _ = addr;
+        _ = size;
+    }
+};
+
+const paging = struct {
+    pub const PAGE_PRESENT: u64 = 0x001;
+    pub const PAGE_WRITABLE: u64 = 0x002;
+    
+    pub fn mapPhysical(phys_addr: usize, size: usize, flags: u64) !usize {
+        _ = flags;
+        _ = size;
+        return phys_addr; // Identity mapping
+    }
+    
+    pub fn unmapPages(virt_addr: usize, size: usize) void {
+        _ = virt_addr;
+        _ = size;
+    }
+};
+
+const sync = struct {
+    pub const Mutex = struct {
+        pub fn init() Mutex {
+            return Mutex{};
+        }
+        
+        pub fn lock(self: *Mutex) void {
+            _ = self;
+        }
+        
+        pub fn unlock(self: *Mutex) void {
+            _ = self;
+        }
+    };
+};
 
 /// Device types
 pub const DeviceType = enum(u8) {

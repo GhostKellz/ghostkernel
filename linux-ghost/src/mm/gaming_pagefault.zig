@@ -247,7 +247,7 @@ pub const GamingPageFaultHandler = struct {
 /// Fast path cache for common allocation patterns
 const FastPathCache = struct {
     allocator: std.mem.Allocator,
-    cache_entries: std.HashMap(usize, CacheEntry, std.HashMap.DefaultContext(usize), std.HashMap.default_max_load_percentage),
+    cache_entries: std.HashMap(usize, CacheEntry, void, std.hash_map.default_max_load_percentage),
     
     const CacheEntry = struct {
         page_addr: usize,
@@ -259,7 +259,7 @@ const FastPathCache = struct {
     pub fn init(allocator: std.mem.Allocator) !FastPathCache {
         return FastPathCache{
             .allocator = allocator,
-            .cache_entries = std.HashMap(usize, CacheEntry).init(allocator),
+            .cache_entries = std.HashMap(usize, CacheEntry, void, std.hash_map.default_max_load_percentage).init(allocator),
         };
     }
     
@@ -285,7 +285,7 @@ const FastPathCache = struct {
 const PredictiveAllocator = struct {
     allocator: std.mem.Allocator,
     enabled: bool,
-    prediction_cache: std.HashMap(u32, PredictionEntry, std.HashMap.DefaultContext(u32), std.HashMap.default_max_load_percentage), // Keyed by PID
+    prediction_cache: std.HashMap(u32, PredictionEntry, void, std.hash_map.default_max_load_percentage), // Keyed by PID
     
     const PredictionEntry = struct {
         allocation_pattern: GamingPageFaultContext.AllocationPattern,
@@ -298,7 +298,7 @@ const PredictiveAllocator = struct {
         return PredictiveAllocator{
             .allocator = allocator,
             .enabled = false,
-            .prediction_cache = std.HashMap(u32, PredictionEntry).init(allocator),
+            .prediction_cache = std.HashMap(u32, PredictionEntry, void, std.hash_map.default_max_load_percentage).init(allocator),
         };
     }
     

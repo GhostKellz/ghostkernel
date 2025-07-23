@@ -219,8 +219,8 @@ pub const Zone = struct {
         page.ref_count = 1;
         page.flags.buddy = false;
         
-        self.nr_alloc += @as(u64, 1) << to_order;
-        self.nr_free_pages -= @as(u64, 1) << to_order;
+        self.nr_alloc += @as(u64, 1) << @as(u6, @truncate(to_order));
+        self.nr_free_pages -= @as(u64, 1) << @as(u6, @truncate(to_order));
         
         return page;
     }
@@ -452,6 +452,7 @@ pub fn getKernelAllocator() std.mem.Allocator {
         .alloc = kernelAlloc,
         .resize = kernelResize,
         .free = kernelFree,
+        .remap = kernelRemap,
     };
     
     kernel_allocator_instance = std.mem.Allocator{
@@ -490,7 +491,18 @@ fn kernelResize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_le
     return false;
 }
 
-fn kernelFree(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+fn kernelRemap(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_size: usize, ret_addr: usize) ?[*]u8 {
+    _ = ctx;
+    _ = buf;
+    _ = buf_align;
+    _ = new_size;
+    _ = ret_addr;
+    
+    // For simplicity, we don't support remap
+    return null;
+}
+
+fn kernelFree(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
     _ = ctx;
     _ = buf_align;
     _ = ret_addr;

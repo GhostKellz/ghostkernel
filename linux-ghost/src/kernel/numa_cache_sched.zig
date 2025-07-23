@@ -171,7 +171,16 @@ pub const CacheTopology = struct {
         return CacheTopology{
             .cpu_id = cpu_id,
             .numa_node = numa_node,
-            .cache_info = hybrid_sched.CacheInfo{},
+            .cache_info = hybrid_sched.CacheInfo{
+                .l1_data_size = 32,
+                .l1_inst_size = 32,
+                .l2_size = 512,
+                .l3_size = 16384,
+                .l3_shared_cores = 8,
+                .cache_line_size = 64,
+                .x3d_cache = false,
+                .smart_cache = false,
+            },
             .l1_shared_with = std.ArrayList(u32).init(allocator),
             .l2_shared_with = std.ArrayList(u32).init(allocator),
             .l3_shared_with = std.ArrayList(u32).init(allocator),
@@ -223,11 +232,11 @@ pub const CacheTopology = struct {
 pub const NUMACacheScheduler = struct {
     allocator: std.mem.Allocator,
     numa_nodes: std.ArrayList(NUMANode),
-    cache_topology: std.HashMap(u32, CacheTopology), // CPU ID -> topology
+    cache_topology: std.HashMap(u32, CacheTopology, std.hash_map.AutoContext(u32), 80), // CPU ID -> topology
     
     // Task placement tracking
-    task_placements: std.HashMap(u32, TaskPlacement), // PID -> placement
-    cache_usage: std.HashMap(u64, CacheUsage),        // Cache ID -> usage
+    task_placements: std.HashMap(u32, TaskPlacement, std.hash_map.AutoContext(u32), 80), // PID -> placement
+    cache_usage: std.HashMap(u64, CacheUsage, std.hash_map.AutoContext(u64), 80),        // Cache ID -> usage
     
     // Gaming optimizations
     gaming_preferred_nodes: std.ArrayList(u32),       // Preferred NUMA nodes for gaming
@@ -299,9 +308,9 @@ pub const NUMACacheScheduler = struct {
         return Self{
             .allocator = allocator,
             .numa_nodes = std.ArrayList(NUMANode).init(allocator),
-            .cache_topology = std.HashMap(u32, CacheTopology).init(allocator),
-            .task_placements = std.HashMap(u32, TaskPlacement).init(allocator),
-            .cache_usage = std.HashMap(u64, CacheUsage).init(allocator),
+            .cache_topology = std.HashMap(u32, CacheTopology, std.hash_map.AutoContext(u32), 80).init(allocator),
+            .task_placements = std.HashMap(u32, TaskPlacement, std.hash_map.AutoContext(u32), 80).init(allocator),
+            .cache_usage = std.HashMap(u64, CacheUsage, std.hash_map.AutoContext(u64), 80).init(allocator),
             .gaming_preferred_nodes = std.ArrayList(u32).init(allocator),
             .cache_warming_enabled = true,
             .migration_hysteresis = 0.2, // 20% improvement needed to migrate
@@ -354,7 +363,16 @@ pub const NUMACacheScheduler = struct {
                 
                 // Create cache topology for each CPU
                 var cache_topo = CacheTopology.init(self.allocator, cpu_id, @intCast(node_id));
-                cache_topo.cache_info = numa_node.cache_info;
+                cache_topo.cache_info = hybrid_sched.CacheInfo{
+                    .l1_data_size = numa_node.cache_info.l1_data_size_kb,
+                    .l1_inst_size = numa_node.cache_info.l1_inst_size_kb,
+                    .l2_size = numa_node.cache_info.l2_size_kb,
+                    .l3_size = numa_node.cache_info.l3_size_mb * 1024,
+                    .l3_shared_cores = numa_node.cache_info.l3_shared_cores,
+                    .cache_line_size = 64,
+                    .x3d_cache = numa_node.cache_info.has_x3d_cache,
+                    .smart_cache = numa_node.cache_info.has_smart_cache,
+                };
                 
                 try self.cache_topology.put(cpu_id, cache_topo);
             }

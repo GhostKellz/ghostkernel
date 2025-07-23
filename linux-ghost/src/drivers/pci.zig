@@ -3,8 +3,6 @@
 
 const std = @import("std");
 const driver_framework = @import("driver_framework.zig");
-const memory = @import("../mm/memory.zig");
-const paging = @import("../mm/paging.zig");
 
 /// PCI configuration space addresses
 const PCI_CONFIG_ADDRESS = 0xCF8;
@@ -437,7 +435,7 @@ var pci_device_ops = driver_framework.DeviceOps{
 };
 
 fn pciProbe(device: *driver_framework.Device) driver_framework.DriverError!void {
-    const pci_dev = @fieldParentPtr(PCIDevice, "device", device);
+    const pci_dev = @as(*PCIDevice, @fieldParentPtr("device", device));
     
     // Read basic PCI info
     pci_dev.vendor_id = pci_dev.readConfig(u16, 0x00);
@@ -484,18 +482,18 @@ fn pciProbe(device: *driver_framework.Device) driver_framework.DriverError!void 
 }
 
 fn pciRemove(device: *driver_framework.Device) void {
-    const pci_dev = @fieldParentPtr(PCIDevice, "device", device);
+    const pci_dev = @as(*PCIDevice, @fieldParentPtr("device", device));
     pci_dev.disableDevice();
 }
 
 fn pciSuspend(device: *driver_framework.Device, state: driver_framework.PowerState) driver_framework.DriverError!void {
     _ = state;
-    const pci_dev = @fieldParentPtr(PCIDevice, "device", device);
+    const pci_dev = @as(*PCIDevice, @fieldParentPtr("device", device));
     pci_dev.disableDevice();
 }
 
 fn pciResume(device: *driver_framework.Device) driver_framework.DriverError!void {
-    const pci_dev = @fieldParentPtr(PCIDevice, "device", device);
+    const pci_dev = @as(*PCIDevice, @fieldParentPtr("device", device));
     try pci_dev.enableDevice();
 }
 
@@ -599,8 +597,8 @@ pub const PCIScanner = struct {
         const config_port = driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" };
         config_port.writeDword(0, address);
         
-        const data = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
-            .readDword(0);
+        const data_port = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" };
+        const data = data_port.readDword(0);
         
         return @truncate(data >> @as(u5, @truncate((offset & 3) * 8)));
     }
@@ -612,8 +610,8 @@ pub const PCIScanner = struct {
         const config_port = driver_framework.IOPort{ .start = PCI_CONFIG_ADDRESS, .end = PCI_CONFIG_ADDRESS + 3, .name = "PCI_CONFIG" };
         config_port.writeDword(0, address);
         
-        const data = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" }
-            .readDword(0);
+        const data_port = driver_framework.IOPort{ .start = PCI_CONFIG_DATA, .end = PCI_CONFIG_DATA + 3, .name = "PCI_DATA" };
+        const data = data_port.readDword(0);
         
         return @truncate(data >> @as(u5, @truncate((offset & 2) * 8)));
     }

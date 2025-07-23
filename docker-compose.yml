@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  ghost-kernel-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghost-kernel:latest
+    container_name: ghost-kernel-testing
+    
+    # NVIDIA GPU Runtime Configuration
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - CUDA_VISIBLE_DEVICES=all
+    
+    # Enhanced capabilities for kernel development
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - SYS_MODULE  # For loading kernel modules
+      - SYS_RAWIO   # For raw I/O access
+      - NET_ADMIN   # For network testing
+    
+    # Device access
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools
+      - /dev/nvidia-modeset:/dev/nvidia-modeset
+    
+    # Volume mounts for development
+    volumes:
+      - .:/ghost:rw
+      - /dev:/dev:rw
+      - /sys:/sys:ro
+      - /proc:/proc:ro
+      - ghost-logs:/ghost/logs
+      - ghost-cache:/ghost/.zig-cache
+    
+    # Resource limits for testing
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility, compute]
+    
+    # Network configuration
+    network_mode: host
+    
+    # Working directory
+    working_dir: /ghost
+    
+    # Keep container running for interactive testing
+    tty: true
+    stdin_open: true
+    
+    # Custom command for testing
+    command: ["/bin/bash", "/ghost/start_testing.sh"]
+
+  # Additional service for kernel module development
+  ghost-kernel-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghost-kernel:latest
+    container_name: ghost-kernel-dev
+    
+    # Development mode - interactive shell
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - SYS_MODULE
+    
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+    
+    volumes:
+      - .:/ghost:rw
+      - ghost-dev-cache:/ghost/.zig-cache
+    
+    working_dir: /ghost
+    tty: true
+    stdin_open: true
+    
+    # Interactive development shell
+    command: ["/bin/bash"]
+    
+    # This service won't start automatically
+    profiles:
+      - dev
+
+volumes:
+  ghost-logs:
+    driver: local
+  ghost-cache:
+    driver: local  
+  ghost-dev-cache:
+    driver: local

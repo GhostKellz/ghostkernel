@@ -1,0 +1,55 @@
+# Ghost Kernel Docker Ignore
+# Ignore build artifacts and temporary files to keep container build fast
+
+# Zig build artifacts
+.zig-cache/
+zig-out/
+*/zig-out/
+*/.zig-cache/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*~
+.DS_Store
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Documentation (include only essential docs)
+*.md
+!README.md
+!GHOSTNV_INTEGRATION.md
+
+# Test outputs
+test_output/
+output/
+
+# Node modules (if any)
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS generated files
+Thumbs.db
+.directory
+
+# Large binaries that aren't needed for container build
+tools/
+*.iso
+*.img
+
+# Keep essential files for testing
+!test_runner.sh
+!Dockerfile
+!docker-compose.yml

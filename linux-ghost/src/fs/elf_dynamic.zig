@@ -5,7 +5,7 @@ const std = @import("std");
 const elf = @import("elf.zig");
 const vfs = @import("vfs.zig");
 const memory = @import("../mm/memory.zig");
-const paging = @import("../mm/paging.zig");
+const paging = @import("../arch/x86_64/paging.zig");
 const process = @import("../kernel/process.zig");
 
 /// Dynamic linker state
@@ -548,36 +548,4 @@ const SymbolEntry = struct {
     object: *SharedObject,
 };
 
-/// ELF symbol structure
-const elf.Symbol = extern struct {
-    st_name: u32,
-    st_info: u8,
-    st_other: u8,
-    st_shndx: u16,
-    st_value: u64,
-    st_size: u64,
-};
-
-/// ELF relocation structure
-const elf.Rela = extern struct {
-    r_offset: u64,
-    r_info: u64,
-    r_addend: i64,
-};
-
-/// Relocation types for x86-64
-const elf.R_X86_64_NONE = 0;
-const elf.R_X86_64_64 = 1;
-const elf.R_X86_64_PC32 = 2;
-const elf.R_X86_64_GOT32 = 3;
-const elf.R_X86_64_PLT32 = 4;
-const elf.R_X86_64_COPY = 5;
-const elf.R_X86_64_GLOB_DAT = 6;
-const elf.R_X86_64_JUMP_SLOT = 7;
-const elf.R_X86_64_RELATIVE = 8;
-const elf.R_X86_64_GOTPCREL = 9;
-
-/// Special section indices
-const elf.SHN_UNDEF = 0;
-const elf.SHN_ABS = 0xFFF1;
-const elf.SHN_COMMON = 0xFFF2;
+// All ELF structures and constants are imported from elf.zig

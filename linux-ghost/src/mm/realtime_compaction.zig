@@ -94,7 +94,7 @@ pub const RealtimeCompactor = struct {
     compaction_phase: CompactionPhase,
     
     // Gaming awareness
-    gaming_processes: std.HashMap(u32, bool), // PID -> is_gaming
+    gaming_processes: std.HashMap(u32, bool, void, std.hash_map.default_max_load_percentage), // PID -> is_gaming
     gaming_memory_ranges: std.ArrayList(MemoryRange),
     
     const CompactionPhase = enum {
@@ -125,7 +125,7 @@ pub const RealtimeCompactor = struct {
             .current_region = null,
             .current_page = 0,
             .compaction_phase = .idle,
-            .gaming_processes = std.HashMap(u32, bool).init(allocator),
+            .gaming_processes = std.HashMap(u32, bool, void, std.hash_map.default_max_load_percentage).init(allocator),
             .gaming_memory_ranges = std.ArrayList(MemoryRange).init(allocator),
         };
     }

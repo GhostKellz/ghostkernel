@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const memory = @import("../mm/memory.zig");
-const paging = @import("../mm/paging.zig");
+const paging = @import("../arch/x86_64/paging.zig");
 const process = @import("../kernel/process.zig");
 
 /// ELF File Header (64-bit)
@@ -142,6 +142,59 @@ pub const ELF = struct {
     pub const DT_ENCODING = 32;
 };
 
+/// ELF symbol structure (64-bit)
+pub const Symbol = extern struct {
+    st_name: u32,    // Symbol name (string table offset)
+    st_info: u8,     // Symbol type and binding
+    st_other: u8,    // Symbol visibility
+    st_shndx: u16,   // Section index
+    st_value: u64,   // Symbol value
+    st_size: u64,    // Symbol size
+};
+
+/// ELF relocation structure with addend (64-bit)
+pub const Rela = extern struct {
+    r_offset: u64,   // Location to relocate
+    r_info: u64,     // Relocation type and symbol index
+    r_addend: i64,   // Addend
+};
+
+/// ELF relocation structure without addend (64-bit)
+pub const Rel = extern struct {
+    r_offset: u64,   // Location to relocate
+    r_info: u64,     // Relocation type and symbol index
+};
+
+/// Relocation types for x86-64
+pub const R_X86_64_NONE = 0;         // No relocation
+pub const R_X86_64_64 = 1;           // Direct 64 bit
+pub const R_X86_64_PC32 = 2;         // PC relative 32 bit signed
+pub const R_X86_64_GOT32 = 3;        // 32 bit GOT entry
+pub const R_X86_64_PLT32 = 4;        // 32 bit PLT address
+pub const R_X86_64_COPY = 5;         // Copy symbol at runtime
+pub const R_X86_64_GLOB_DAT = 6;     // Create GOT entry
+pub const R_X86_64_JUMP_SLOT = 7;    // Create PLT entry
+pub const R_X86_64_RELATIVE = 8;     // Adjust by program base
+pub const R_X86_64_GOTPCREL = 9;     // 32 bit signed PC relative offset to GOT
+pub const R_X86_64_32 = 10;          // Direct 32 bit zero extended
+pub const R_X86_64_32S = 11;         // Direct 32 bit sign extended
+pub const R_X86_64_16 = 12;          // Direct 16 bit zero extended
+pub const R_X86_64_PC16 = 13;        // 16 bit sign extended pc relative
+pub const R_X86_64_8 = 14;           // Direct 8 bit sign extended
+pub const R_X86_64_PC8 = 15;         // 8 bit sign extended pc relative
+
+/// Special section indices
+pub const SHN_UNDEF = 0;             // Undefined section
+pub const SHN_LORESERVE = 0xff00;    // Start of reserved indices
+pub const SHN_LOPROC = 0xff00;       // Start of processor-specific
+pub const SHN_HIPROC = 0xff1f;       // End of processor-specific
+pub const SHN_LOOS = 0xff20;         // Start of OS-specific
+pub const SHN_HIOS = 0xff3f;         // End of OS-specific
+pub const SHN_ABS = 0xfff1;          // Associated symbol is absolute
+pub const SHN_COMMON = 0xfff2;       // Associated symbol is common
+pub const SHN_XINDEX = 0xffff;       // Index is in extra table
+pub const SHN_HIRESERVE = 0xffff;    // End of reserved indices
+
 /// ELF loader errors
 pub const ELFError = error{
     InvalidMagic,
@@ -159,6 +212,7 @@ pub const ELFError = error{
     InvalidInterpreter,
     FileReadError,
     PermissionDenied,
+    FileNotFound,
 };
 
 /// ELF Loader context
@@ -284,15 +338,16 @@ pub const ELFLoader = struct {
         if (ph.p_flags & ELF.PF_X == 0) prot_flags |= paging.PAGE_NX;
         
         // Allocate physical pages
-        const phys_addr = try memory.allocPages(pages_needed);
-        if (phys_addr == null) {
+        const page_frame = memory.allocPagesGlobal(@intCast(std.math.log2(pages_needed)));
+        if (page_frame == null) {
             return ELFError.MemoryAllocationFailed;
         }
+        const phys_addr = page_frame.?.getPhysAddr();
         
         // Map pages into process address space
         try proc.address_space.?.mapRange(
             page_start,
-            phys_addr.?,
+            phys_addr,
             pages_needed * 4096,
             prot_flags
         );
@@ -319,17 +374,18 @@ pub const ELFLoader = struct {
         
         // Allocate physical pages for stack
         const pages_needed = stack_size / 4096;
-        const phys_addr = try memory.allocPages(pages_needed);
-        if (phys_addr == null) {
+        const page_frame = memory.allocPagesGlobal(@intCast(std.math.log2(pages_needed)));
+        if (page_frame == null) {
             return ELFError.MemoryAllocationFailed;
         }
+        const phys_addr = page_frame.?.getPhysAddr();
         
         // Map stack into process address space
         try proc.address_space.?.mapRange(
             stack_bottom,
-            phys_addr.?,
+            phys_addr,
             stack_size,
-            paging.PAGE_PRESENT | paging.PAGE_WRITABLE | paging.PAGE_NX
+            paging.PAGE_PRESENT | paging.PAGE_WRITABLE | paging.PAGE_NX | paging.PAGE_USER
         );
         
         // Set stack pointer

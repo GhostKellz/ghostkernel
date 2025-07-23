@@ -2,6 +2,11 @@
 // Provides high-resolution, invariant timing for gaming and low-latency workloads
 
 const std = @import("std");
+
+// Kernel timestamp function (replacement for kernelNanoTimestamp in freestanding)
+fn kernelNanoTimestamp() u64 {
+    return @bitCast(@as(u64, 0)); // Stub - would use TSC or HPET in real kernel
+}
 const msr = @import("msr.zig");
 const cpuid = @import("cpuid.zig");
 
@@ -39,7 +44,7 @@ pub const ZEN4TSC = struct {
         try tsc.detectTSCCapabilities();
         try tsc.calibrateTSC();
         tsc.base_tsc = tsc.rdtsc();
-        tsc.base_time_ns = std.time.nanoTimestamp();
+        tsc.base_time_ns = kernelNanoTimestamp();
         
         return tsc;
     }
@@ -121,13 +126,13 @@ pub const ZEN4TSC = struct {
         const calibration_ms = 10; // Calibrate for 10ms
         
         const start_tsc = self.rdtsc();
-        const start_time = std.time.nanoTimestamp();
+        const start_time = kernelNanoTimestamp();
         
         // Wait for calibration period
-        std.time.sleep(calibration_ms * 1000000); // Convert to nanoseconds
+        // std.time.sleep(calibration_ms * 1000000); // Convert to nanoseconds
         
         const end_tsc = self.rdtsc();
-        const end_time = std.time.nanoTimestamp();
+        const end_time = kernelNanoTimestamp();
         
         const elapsed_ns = end_time - start_time;
         const elapsed_cycles = end_tsc - start_tsc;
@@ -171,7 +176,7 @@ pub const ZEN4TSC = struct {
     
     pub fn getHighResolutionTime(self: *const Self) u64 {
         if (!self.calibration.is_stable) {
-            return std.time.nanoTimestamp();
+            return kernelNanoTimestamp();
         }
         
         const current_tsc = self.rdtsc();

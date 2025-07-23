@@ -6,7 +6,7 @@
     .dependencies = .{
         .ghostnv = .{
             .url = "https://github.com/ghostkellz/ghostnv/archive/main.tar.gz",
-            .hash = "ghostnv-0.2.0-EX5M62jCnh0Qn9MoLkh4ShGAUHD5aWv-Lp1_VsaxHDqd",
+            .hash = "ghostnv-0.2.2-EX5M62i_LCK8hmApb_7yKNncufAxdHRUqxLBTHYz3N5N",
         },
     },
     .paths = .{

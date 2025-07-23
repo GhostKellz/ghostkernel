@@ -95,11 +95,11 @@ pub fn build(b: *std.Build) void {
             kernel_options.addOption(bool, "CONFIG_GHOSTNV_LOW_LATENCY", true);
             kernel_options.addOption(bool, "CONFIG_GHOSTNV_GSYNC", true);
             kernel_options.addOption(bool, "CONFIG_GAMING_OPTIMIZATIONS", true);
-            kernel_options.addOption(bool, "CONFIG_DIRECT_STORAGE", true);
+            kernel_options.addOption(bool, "CONFIG_DIRECT_STORAGE", false);
             kernel_options.addOption(bool, "CONFIG_NUMA_CACHE_AWARE", true);
-            kernel_options.addOption(bool, "CONFIG_GAMING_SYSCALLS", true);
+            kernel_options.addOption(bool, "CONFIG_GAMING_SYSCALLS", false);
             kernel_options.addOption(bool, "CONFIG_HW_TIMESTAMP_SCHED", true);
-            kernel_options.addOption(bool, "CONFIG_REALTIME_COMPACTION", true);
+            kernel_options.addOption(bool, "CONFIG_REALTIME_COMPACTION", false);
             kernel_options.addOption(bool, "CONFIG_GAMING_FUTEX", true);
             kernel_options.addOption(bool, "CONFIG_GAMING_PRIORITY", true);
         }

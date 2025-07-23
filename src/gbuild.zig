@@ -38,11 +38,11 @@ fn printUsage() !void {
         \\  ghost-cachy   Build linux-ghost with CachyOS patches  
         \\  experimental  Build experimental Zig kernel (linux-zghost)
         \\
-    );
+    , .{});
 }
 
 fn buildExperimentalKernel() !void {
-    std.debug.print("Building experimental Zig kernel (linux-zghost)...\n");
+    std.debug.print("Building experimental Zig kernel (linux-zghost)...\n", .{});
     
     const result = std.process.Child.run(.{
         .allocator = std.heap.page_allocator,
@@ -54,11 +54,11 @@ fn buildExperimentalKernel() !void {
     };
     
     if (result.term.Exited == 0) {
-        std.debug.print("✓ Successfully built linux-zghost\n");
-        std.debug.print("  Output: linux-zghost/zig-out/bin/linux-zghost\n");
-        std.debug.print("  Run with: zig build --kernel --variant experimental\n");
+        std.debug.print("✓ Successfully built linux-zghost\n", .{});
+        std.debug.print("  Output: linux-zghost/zig-out/bin/linux-zghost\n", .{});
+        std.debug.print("  Run with: zig build --kernel --variant experimental\n", .{});
     } else {
-        std.debug.print("✗ Failed to build linux-zghost\n");
+        std.debug.print("✗ Failed to build linux-zghost\n", .{});
         std.debug.print("Error output: {s}\n", .{result.stderr});
     }
 }
@@ -151,7 +151,7 @@ fn applyPatches(variant: []const u8) !void {
     const content = series_file.readToEndAlloc(std.heap.page_allocator, 1024 * 1024) catch return;
     defer std.heap.page_allocator.free(content);
     
-    var lines = std.mem.split(u8, content, "\n");
+    var lines = std.mem.splitScalar(u8, content, '\n');
     while (lines.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t\r\n");
         if (trimmed.len == 0 or trimmed[0] == '#') continue;

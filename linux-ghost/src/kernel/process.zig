@@ -10,6 +10,11 @@ const console = @import("../arch/x86_64/console.zig");
 /// Process ID type
 pub const Pid = u32;
 
+/// Forward declarations for VFS types
+const vfs = @import("../fs/vfs.zig");
+const File = vfs.File;
+const Dentry = vfs.Dentry;
+
 /// Process states
 pub const ProcessState = enum {
     embryo,     // Being created
@@ -68,6 +73,8 @@ pub const Process = struct {
     
     // CPU context
     context: Context,
+    entry_point: u64,               // Entry point address
+    stack_pointer: u64,             // User stack pointer
     
     // Scheduling
     task: sched.Task,
@@ -97,6 +104,24 @@ pub const Process = struct {
     
     const Self = @This();
     
+    pub fn create(alloc: std.mem.Allocator) !*Self {
+        const pid = getNextPid();
+        
+        const proc = try alloc.create(Self);
+        proc.* = Self.init(pid);
+        
+        try proc.allocateKernelStack();
+        try proc.setupAddressSpace();
+        
+        // Add to process list
+        if (process_list) |list| {
+            proc.siblings = list;
+        }
+        process_list = proc;
+        
+        return proc;
+    }
+    
     pub fn init(pid: Pid) Self {
         return Self{
             .pid = pid,
@@ -108,6 +133,8 @@ pub const Process = struct {
             .kernel_stack = null,
             .kernel_stack_size = KERNEL_STACK_SIZE,
             .context = Context.init(),
+            .entry_point = 0,
+            .stack_pointer = 0,
             .task = sched.Task.init(pid, 0),
             .cpu_affinity = 0xFFFF_FFFF_FFFF_FFFF, // All CPUs
             .files = [_]FileDescriptor{.{ .file = null, .offset = 0, .flags = 0 }} ** MAX_FDS,
@@ -239,8 +266,7 @@ pub const Process = struct {
 };
 
 // File and directory placeholders
-const File = struct {};
-const Dentry = struct {};
+// Forward declarations removed - using VFS types
 const SignalHandler = enum { default, ignore, custom };
 
 // Constants

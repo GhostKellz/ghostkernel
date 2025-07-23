@@ -32,12 +32,12 @@ export fn _start() noreturn {
     
     // Initialize interrupt handling
     interrupts.init() catch {
-        panic("Failed to initialize interrupt handling");
+        panic("Failed to initialize interrupt handling", null, null);
     };
     
     // Initialize kernel subsystems
     kernel.initializeSubsystems() catch {
-        panic("Failed to initialize kernel subsystems");
+        panic("Failed to initialize kernel subsystems", null, null);
     };
     
     console.printf("Kernel initialization complete\n", .{});

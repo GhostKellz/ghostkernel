@@ -30,7 +30,7 @@ pub const FileMode = packed struct(u16) {
     sticky: bool = false,
     setgid: bool = false,
     setuid: bool = false,
-    file_type: FileType = .regular,
+    file_type: u3 = 0, // Use u3 instead of FileType enum
     _reserved: u1 = 0,
 };
 
@@ -82,6 +82,41 @@ pub const DirEntry = struct {
     name_length: u8,         // Length of name
     file_type: FileType,     // File type
     name: []const u8,        // File name (null-terminated)
+};
+
+/// Dentry (Directory Entry) - represents a pathname component
+pub const Dentry = struct {
+    name: []const u8,        // Component name
+    parent: ?*Dentry,        // Parent dentry
+    inode: ?*Inode,          // Associated inode (null for negative dentry)
+    mount_point: ?*Mount,    // Mount point if this is a mountpoint
+    ref_count: std.atomic.Value(u32), // Reference count
+    flags: u32,              // Dentry flags
+    
+    const Self = @This();
+    
+    pub fn init(name: []const u8, parent: ?*Dentry, inode: ?*Inode) Self {
+        return Self{
+            .name = name,
+            .parent = parent,
+            .inode = if (inode) |i| i.get() else null,
+            .mount_point = null,
+            .ref_count = std.atomic.Value(u32).init(1),
+            .flags = 0,
+        };
+    }
+    
+    pub fn get(self: *Self) *Self {
+        _ = self.ref_count.fetchAdd(1, .acquire);
+        return self;
+    }
+    
+    pub fn put(self: *Self) void {
+        if (self.ref_count.fetchSub(1, .release) == 1) {
+            if (self.inode) |i| i.put();
+            // TODO: Free dentry
+        }
+    }
 };
 
 /// VFS errors
@@ -652,19 +687,27 @@ pub const VFS = struct {
     }
 };
 
-// Global VFS instance
-var global_vfs: ?*VFS = null;
+/// Global VFS instance
+var global_vfs: ?VFS = null;
 
-/// Initialize the VFS subsystem
-pub fn initVFS(allocator: std.mem.Allocator) !void {
-    const vfs = try allocator.create(VFS);
-    vfs.* = VFS.init(allocator);
-    global_vfs = vfs;
+/// Initialize the global VFS
+pub fn init(allocator: std.mem.Allocator) !void {
+    global_vfs = VFS.init(allocator);
 }
 
 /// Get the global VFS instance
 pub fn getVFS() *VFS {
-    return global_vfs orelse @panic("VFS not initialized");
+    return &global_vfs.?;
+}
+
+/// Register a filesystem type
+pub fn registerFilesystem(fs_type: *const FilesystemType) !void {
+    try getVFS().registerFilesystem(fs_type);
+}
+
+/// Mount a filesystem
+pub fn mount(fs_type_name: []const u8, dev_name: []const u8, mount_point: []const u8, flags: u32, data: ?[]const u8) !void {
+    try getVFS().mount(fs_type_name, dev_name, mount_point, flags, data);
 }
 
 // Tests

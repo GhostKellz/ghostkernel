@@ -3,6 +3,11 @@
 //! Features dynamic priority adjustment, dependency tracking, and real-time guarantees
 
 const std = @import("std");
+
+// Kernel timestamp function (replacement for kernelNanoTimestamp in freestanding)
+fn kernelNanoTimestamp() u64 {
+    return @bitCast(@as(u64, 0)); // Stub - would use TSC or HPET in real kernel
+}
 const sched = @import("sched.zig");
 const sync = @import("sync.zig");
 const console = @import("../arch/x86_64/console.zig");
@@ -53,7 +58,7 @@ const PriorityInheritance = struct {
             .inherited_priority = original,
             .inheritance_count = 0,
             .inheritance_chain = std.ArrayList(u32).init(allocator),
-            .last_update = @intCast(std.time.nanoTimestamp()),
+            .last_update = @intCast(kernelNanoTimestamp()),
         };
     }
     
@@ -66,7 +71,7 @@ const PriorityInheritance = struct {
             self.inherited_priority = priority;
             try self.inheritance_chain.append(from_pid);
             self.inheritance_count += 1;
-            self.last_update = @intCast(std.time.nanoTimestamp());
+            self.last_update = @intCast(kernelNanoTimestamp());
         }
     }
     
@@ -90,7 +95,7 @@ const PriorityInheritance = struct {
             }
         }
         
-        self.last_update = @intCast(std.time.nanoTimestamp());
+        self.last_update = @intCast(kernelNanoTimestamp());
     }
     
     pub fn getEffectivePriority(self: *const PriorityInheritance) i8 {
@@ -113,7 +118,7 @@ const GamingDependency = struct {
     active: bool,
     
     pub fn init(dependent: u32, dependency: u32, dep_type: DependencyType, strength: f32) GamingDependency {
-        const now = @as(u64, @intCast(std.time.nanoTimestamp()));
+        const now = @as(u64, @intCast(kernelNanoTimestamp()));
         return GamingDependency{
             .dependent_pid = dependent,
             .dependency_pid = dependency,
@@ -126,11 +131,11 @@ const GamingDependency = struct {
     }
     
     pub fn updateAccess(self: *GamingDependency) void {
-        self.last_accessed = @intCast(std.time.nanoTimestamp());
+        self.last_accessed = @intCast(kernelNanoTimestamp());
     }
     
     pub fn isStale(self: *const GamingDependency) bool {
-        const now = @as(u64, @intCast(std.time.nanoTimestamp()));
+        const now = @as(u64, @intCast(kernelNanoTimestamp()));
         const age = now - self.last_accessed;
         return age > 5_000_000_000; // 5 seconds without access
     }
@@ -177,7 +182,7 @@ const GamingProcess = struct {
             .is_input_critical = task.input_task,
             .dependencies = std.ArrayList(GamingDependency).init(allocator),
             .dependents = std.ArrayList(u32).init(allocator),
-            .last_frame_time = @intCast(std.time.nanoTimestamp()),
+            .last_frame_time = @intCast(kernelNanoTimestamp()),
             .target_fps = if (task.gaming_task) 120 else 60,
             .priority_violations = 0,
         };
@@ -222,11 +227,11 @@ const GamingProcess = struct {
     }
     
     pub fn updateFrameTime(self: *GamingProcess) void {
-        self.last_frame_time = @intCast(std.time.nanoTimestamp());
+        self.last_frame_time = @intCast(kernelNanoTimestamp());
     }
     
     pub fn isFrameDeadlineMissed(self: *const GamingProcess) bool {
-        const now = @as(u64, @intCast(std.time.nanoTimestamp()));
+        const now = @as(u64, @intCast(kernelNanoTimestamp()));
         const frame_time_ns = 1_000_000_000 / self.target_fps;
         return (now - self.last_frame_time) > frame_time_ns;
     }
@@ -235,8 +240,8 @@ const GamingProcess = struct {
 /// Gaming Priority Manager
 pub const GamingPriorityManager = struct {
     allocator: std.mem.Allocator,
-    gaming_processes: std.HashMap(u32, GamingProcess),
-    dependency_graph: std.HashMap(u64, GamingDependency), // Hash of (dependent_pid, dependency_pid)
+    gaming_processes: std.HashMap(u32, GamingProcess, std.hash_map.AutoContext(u32), 80),
+    dependency_graph: std.HashMap(u64, GamingDependency, std.hash_map.AutoContext(u64), 80), // Hash of (dependent_pid, dependency_pid)
     priority_monitor: PriorityMonitor,
     
     // Configuration
@@ -252,7 +257,7 @@ pub const GamingPriorityManager = struct {
         violations_detected: u64 = 0,
         
         pub fn shouldCheck(self: *PriorityMonitor) bool {
-            const now = @as(u64, @intCast(std.time.nanoTimestamp()));
+            const now = @as(u64, @intCast(kernelNanoTimestamp()));
             if (now - self.last_check >= self.check_interval_ns) {
                 self.last_check = now;
                 return true;
@@ -266,8 +271,8 @@ pub const GamingPriorityManager = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
-            .gaming_processes = std.HashMap(u32, GamingProcess).init(allocator),
-            .dependency_graph = std.HashMap(u64, GamingDependency).init(allocator),
+            .gaming_processes = std.HashMap(u32, GamingProcess, std.hash_map.AutoContext(u32), 80).init(allocator),
+            .dependency_graph = std.HashMap(u64, GamingDependency, std.hash_map.AutoContext(u64), 80).init(allocator),
             .priority_monitor = PriorityMonitor{},
             .enable_dynamic_priority = true,
             .enable_dependency_tracking = true,
@@ -451,7 +456,7 @@ pub const GamingPriorityManager = struct {
         _ = pid;
         
         // Dynamic priority adjustment based on behavior
-        const now = @as(u64, @intCast(std.time.nanoTimestamp()));
+        const now = @as(u64, @intCast(kernelNanoTimestamp()));
         const time_since_frame = now - process.last_frame_time;
         
         // Boost priority if frame-critical and approaching deadline

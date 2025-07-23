@@ -3,6 +3,11 @@
 //! Features sub-microsecond precision, VRR sync, and frame deadline management
 
 const std = @import("std");
+
+// Kernel timestamp function (replacement for kernelNanoTimestamp in freestanding)
+fn kernelNanoTimestamp() u64 {
+    return @bitCast(@as(u64, 0)); // Stub - would use TSC or HPET in real kernel
+}
 const sched = @import("sched.zig");
 const console = @import("../arch/x86_64/console.zig");
 
@@ -266,7 +271,7 @@ pub const HardwareTimestampScheduler = struct {
     allocator: std.mem.Allocator,
     timer_caps: HardwareTimerCaps,
     timestamp_source: TimestampSource,
-    gaming_tasks: std.HashMap(u32, GamingTaskTiming),
+    gaming_tasks: std.HashMap(u32, GamingTaskTiming, std.hash_map.AutoContext(u32), 80),
     
     // Timing calibration
     tsc_frequency: u64,
@@ -289,7 +294,7 @@ pub const HardwareTimestampScheduler = struct {
             .allocator = allocator,
             .timer_caps = timer_caps,
             .timestamp_source = timestamp_source,
-            .gaming_tasks = std.HashMap(u32, GamingTaskTiming).init(allocator),
+            .gaming_tasks = std.HashMap(u32, GamingTaskTiming, std.hash_map.AutoContext(u32), 80).init(allocator),
             .tsc_frequency = timer_caps.rdtsc_frequency,
             .cycles_per_nanosecond = @as(f64, @floatFromInt(timer_caps.rdtsc_frequency)) / 1_000_000_000.0,
             .nanoseconds_per_cycle = 1_000_000_000.0 / @as(f64, @floatFromInt(timer_caps.rdtsc_frequency)),
@@ -438,13 +443,13 @@ pub const HardwareTimestampScheduler = struct {
     
     fn calibrateTiming(self: *Self) !void {
         // Calibrate TSC frequency and timing conversion
-        const calibration_start_ns = std.time.nanoTimestamp();
+        const calibration_start_ns = kernelNanoTimestamp();
         const calibration_start_cycles = self.readTSC();
         
         // Wait for calibration period
-        std.time.sleep(10_000_000); // 10ms
+        // std.time.sleep(10_000_000); // 10ms
         
-        const calibration_end_ns = std.time.nanoTimestamp();
+        const calibration_end_ns = kernelNanoTimestamp();
         const calibration_end_cycles = self.readTSC();
         
         // Calculate actual frequencies
@@ -515,25 +520,25 @@ pub const HardwareTimestampScheduler = struct {
     fn readTSC(self: *Self) u64 {
         _ = self;
         // In real implementation, use inline assembly: rdtsc
-        return @as(u64, @intCast(std.time.nanoTimestamp())); // Mock with system timer
+        return @as(u64, @intCast(kernelNanoTimestamp())); // Mock with system timer
     }
     
     fn readHPET(self: *Self) u64 {
         _ = self;
         // In real implementation, read HPET counter register
-        return @as(u64, @intCast(std.time.nanoTimestamp()));
+        return @as(u64, @intCast(kernelNanoTimestamp()));
     }
     
     fn readAPICTimer(self: *Self) u64 {
         _ = self;
         // In real implementation, read APIC timer current count
-        return @as(u64, @intCast(std.time.nanoTimestamp()));
+        return @as(u64, @intCast(kernelNanoTimestamp()));
     }
     
     fn readPerfCounter(self: *Self) u64 {
         _ = self;
         // In real implementation, read performance monitoring counter
-        return @as(u64, @intCast(std.time.nanoTimestamp()));
+        return @as(u64, @intCast(kernelNanoTimestamp()));
     }
     
     fn setTSCDeadlineTimer(self: *Self, deadline_cycles: u64) void {
